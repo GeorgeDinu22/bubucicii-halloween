@@ -324,21 +324,6 @@
     filter: drop-shadow(0 0 6px rgba(255, 77, 125, .55));
   }
   .sound-note { margin: 0; font-size: .8rem; color: var(--mist); letter-spacing: .06em; }
-  .mute {
-    position: fixed; z-index: 50;
-    right: max(16px, env(safe-area-inset-right, 0px));
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
-    width: 46px; height: 46px; border-radius: 50%;
-    display: grid; place-items: center; cursor: pointer;
-    background: rgba(11, 7, 18, .75); color: var(--candle);
-    border: 1.5px solid rgba(255, 122, 26, .6);
-    box-shadow: 0 0 18px rgba(255, 122, 26, .25);
-  }
-  .mute:focus-visible { outline: 3px solid var(--candle); outline-offset: 3px; }
-  .mute svg { width: 22px; height: 22px; }
-  .mute .off { display: none; }
-  .mute[aria-pressed="true"] .on { display: none; }
-  .mute[aria-pressed="true"] .off { display: inline; }
 
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
@@ -441,14 +426,6 @@
   </button>
   <p class="sound-note">dă volumul mai tare</p>
 </section>
-
-<button class="mute" id="mute" type="button" aria-pressed="false" aria-label="Oprește sunetul">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-    <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/>
-    <g class="on"><path d="M15.5 9a4 4 0 0 1 0 6"/><path d="M18 6.5a7.5 7.5 0 0 1 0 11"/></g>
-    <g class="off"><path d="M16 9.5l5 5M21 9.5l-5 5"/></g>
-  </svg>
-</button>
 
 <div class="toast" id="toast" role="status" aria-live="polite">
   <div class="toast-body">
@@ -555,7 +532,7 @@
   document.getElementById('hint').addEventListener('click', function (e) { e.stopPropagation(); open(); });
   document.getElementById('hint').addEventListener('pointerdown', function (e) { e.stopPropagation(); });
   document.addEventListener('keydown', function (e) {
-    if (!opened && e.target.id !== 'mute' && (e.key === 'ArrowUp' || e.key === 'Enter' || e.key === ' ' || e.key === 'PageDown')) { e.preventDefault(); open(); }
+    if (!opened && (e.key === 'ArrowUp' || e.key === 'Enter' || e.key === ' ' || e.key === 'PageDown')) { e.preventDefault(); open(); }
     if (e.key === 'Escape' && !modal.hidden) closeModal();
   });
 
@@ -602,15 +579,8 @@
 
   // horror sound, synthesized live: dissonant drone, a screech and fluttering wings
   // ---- audio engine: everything is synthesized, no audio files needed ----
-  var ctx = null, out = null, ambBus = null, ambientOn = false, muted = false;
+  var ctx = null, out = null, ambBus = null, ambientOn = false;
   var AMB_LEVEL = 0.55;
-  try { muted = localStorage.getItem('buu-muted') === '1'; } catch (_) {}
-  var muteBtn = document.getElementById('mute');
-  function paintMute() {
-    muteBtn.setAttribute('aria-pressed', muted ? 'true' : 'false');
-    muteBtn.setAttribute('aria-label', muted ? 'Pornește sunetul' : 'Oprește sunetul');
-  }
-  paintMute();
 
   function audio() {
     var AC = window.AudioContext || window.webkitAudioContext;
@@ -618,7 +588,6 @@
     if (!ctx) {
       ctx = new AC();
       out = ctx.createGain();
-      out.gain.value = muted ? 0 : 1;
       out.connect(ctx.destination);
     }
     if (ctx.state === 'suspended') ctx.resume();
@@ -708,20 +677,6 @@
   document.addEventListener('visibilitychange', function () {
     if (!ctx) return;
     if (document.hidden) ctx.suspend(); else ctx.resume();
-  });
-
-  muteBtn.addEventListener('click', function (e) {
-    e.stopPropagation();
-    muted = !muted;
-    try { localStorage.setItem('buu-muted', muted ? '1' : '0'); } catch (_) {}
-    paintMute();
-    startAmbient();
-    if (out) {
-      var t = ctx.currentTime;
-      out.gain.cancelScheduledValues(t);
-      out.gain.setValueAtTime(out.gain.value, t);
-      out.gain.linearRampToValueAtTime(muted ? 0 : 1, t + 0.3);
-    }
   });
 
   function duckAmbient(hold) {
